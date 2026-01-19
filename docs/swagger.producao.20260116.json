@@ -1,0 +1,684 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "APIs PARA OS CONTRIBUINTES DO ISSQN NO SISTEMA NACIONAL NFS-e",
+    "description": "<div>\r\n                        <p><b>Protocolo de comunicação:</b> TLS 1.0, TLS 1.1 e TLS 1.2 com autenticação mútua</p>\r\n                        <p><b>Formato para troca de mensagens:</b> JSON</p>\r\n                        <p><b>Formato dos documentos da NFS-e:</b> XML 1.0 (<a href='https://www.w3.org/TR/REC-xml' target='_blank'>https://www.w3.org/TR/REC-xml</a>)</p>\r\n                        <p><b>Codificação de caracteres:</b> UTF-8</p>\r\n                        <p><b>Certificado digital:</b> Emitido por Autoridade Certificadora ICP-Brasil, tipo A1 ou A3, CNPJ ou CPF, com &quot;Autenticação do Cliente&quot;</p>\r\n                        <p><b>Padrão de assinatura dos documentos XML:</b> XMLDSIG (<a href='https://www.w3.org/TR/xmldsig-core/' target='_blank'>https://www.w3.org/TR/xmldsig-core/</a>)</p>\r\n                        <p><b>Padrão de compactação dos documentos XML para troca de mensagens:</b> GZip com representação base64binary</p>\r\n                        </div>",
+    "version": "v1"
+  },
+  "paths": {
+    "/nfse/{chaveAcesso}/eventos": {
+      "post": {
+        "tags": [
+          "Evento"
+        ],
+        "summary": "Recepciona e processa o Pedido de Registro de Evento de forma síncrona.",
+        "parameters": [
+          {
+            "name": "chaveAcesso",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventoPostRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventoPostRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventoPostRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoPostResponseSucesso"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoPostResponseSucesso"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoPostResponseSucesso"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoPostResponseErro"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoPostResponseErro"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoPostResponseErro"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoPostResponseErro"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoPostResponseErro"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoPostResponseErro"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/nfse/{chaveAcesso}/eventos/{tipoEvento}/{numSeqEvento}": {
+      "get": {
+        "tags": [
+          "Evento"
+        ],
+        "summary": "Retorna o Evento a partir da consulta pela chave de acesso correspondente (50 posições).",
+        "parameters": [
+          {
+            "name": "chaveAcesso",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tipoEvento",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "numSeqEvento",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoGetResponseSucesso"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoGetResponseSucesso"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventoGetResponseSucesso"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseErro"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseErro"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseErro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseErro"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseErro"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseErro"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/nfse": {
+      "post": {
+        "tags": [
+          "NFSe"
+        ],
+        "summary": "Recepciona a DPS e Gera a NFS-e de forma síncrona.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NFSePostRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NFSePostRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/NFSePostRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/NFSePostResponseSucesso"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NFSePostResponseSucesso"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NFSePostResponseSucesso"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/NFSePostResponseErro"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NFSePostResponseErro"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NFSePostResponseErro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/NFSePostResponseErro"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NFSePostResponseErro"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NFSePostResponseErro"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/nfse/{chaveAcesso}": {
+      "get": {
+        "tags": [
+          "NFSe"
+        ],
+        "summary": "Retorna a NFS-e a partir da consulta pela chave de acesso correspondente (50 posições).",
+        "parameters": [
+          {
+            "name": "chaveAcesso",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/NFSeGetResponseSucesso"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NFSeGetResponseSucesso"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NFSeGetResponseSucesso"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseErro"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseErro"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseErro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseErro"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseErro"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseErro"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AlertaDTO": {
+        "type": "object",
+        "properties": {
+          "mensagem": {
+            "$ref": "#/components/schemas/MensagemDTO"
+          },
+          "parametros": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "codigo": {
+            "type": "string",
+            "nullable": true
+          },
+          "descricao": {
+            "type": "string",
+            "nullable": true
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ETipoAmbiente": {
+        "enum": [
+          1,
+          2
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "EventoGetResponseSucesso": {
+        "required": [
+          "dataHoraProcessamento",
+          "eventoXmlGZipB64",
+          "tipoAmbiente",
+          "versaoAplicativo"
+        ],
+        "type": "object",
+        "properties": {
+          "tipoAmbiente": {
+            "$ref": "#/components/schemas/ETipoAmbiente"
+          },
+          "versaoAplicativo": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "dataHoraProcessamento": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eventoXmlGZipB64": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EventoPostRequest": {
+        "required": [
+          "pedidoRegistroEventoXmlGZipB64"
+        ],
+        "type": "object",
+        "properties": {
+          "pedidoRegistroEventoXmlGZipB64": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EventoPostResponseErro": {
+        "required": [
+          "dataHoraProcessamento",
+          "erro",
+          "tipoAmbiente",
+          "versaoAplicativo"
+        ],
+        "type": "object",
+        "properties": {
+          "tipoAmbiente": {
+            "$ref": "#/components/schemas/ETipoAmbiente"
+          },
+          "versaoAplicativo": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "dataHoraProcessamento": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "erro": {
+            "$ref": "#/components/schemas/MensagemProcessamento"
+          }
+        },
+        "additionalProperties": false
+      },
+      "EventoPostResponseSucesso": {
+        "required": [
+          "dataHoraProcessamento",
+          "eventoXmlGZipB64",
+          "tipoAmbiente",
+          "versaoAplicativo"
+        ],
+        "type": "object",
+        "properties": {
+          "tipoAmbiente": {
+            "$ref": "#/components/schemas/ETipoAmbiente"
+          },
+          "versaoAplicativo": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "dataHoraProcessamento": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "eventoXmlGZipB64": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MensagemDTO": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "MensagemProcessamento": {
+        "required": [
+          "codigo",
+          "descricao"
+        ],
+        "type": "object",
+        "properties": {
+          "codigo": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "descricao": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "complemento": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "NFSeGetResponseSucesso": {
+        "required": [
+          "chaveAcesso",
+          "dataHoraProcessamento",
+          "nfseXmlGZipB64",
+          "tipoAmbiente",
+          "versaoAplicativo"
+        ],
+        "type": "object",
+        "properties": {
+          "tipoAmbiente": {
+            "$ref": "#/components/schemas/ETipoAmbiente"
+          },
+          "versaoAplicativo": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "dataHoraProcessamento": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "chaveAcesso": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "nfseXmlGZipB64": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NFSePostRequest": {
+        "required": [
+          "dpsXmlGZipB64"
+        ],
+        "type": "object",
+        "properties": {
+          "dpsXmlGZipB64": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NFSePostResponseErro": {
+        "required": [
+          "dataHoraProcessamento",
+          "erros",
+          "tipoAmbiente",
+          "versaoAplicativo"
+        ],
+        "type": "object",
+        "properties": {
+          "tipoAmbiente": {
+            "$ref": "#/components/schemas/ETipoAmbiente"
+          },
+          "versaoAplicativo": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "dataHoraProcessamento": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "idDPS": {
+            "type": "string",
+            "nullable": true
+          },
+          "erros": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MensagemProcessamento"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "NFSePostResponseSucesso": {
+        "required": [
+          "chaveAcesso",
+          "dataHoraProcessamento",
+          "idDps",
+          "nfseXmlGZipB64",
+          "tipoAmbiente",
+          "versaoAplicativo"
+        ],
+        "type": "object",
+        "properties": {
+          "tipoAmbiente": {
+            "$ref": "#/components/schemas/ETipoAmbiente"
+          },
+          "versaoAplicativo": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "dataHoraProcessamento": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "idDps": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "chaveAcesso": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "nfseXmlGZipB64": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "alertas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlertaDTO"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ResponseErro": {
+        "required": [
+          "dataHoraProcessamento",
+          "erro",
+          "tipoAmbiente",
+          "versaoAplicativo"
+        ],
+        "type": "object",
+        "properties": {
+          "tipoAmbiente": {
+            "$ref": "#/components/schemas/ETipoAmbiente"
+          },
+          "versaoAplicativo": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "dataHoraProcessamento": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "erro": {
+            "$ref": "#/components/schemas/MensagemProcessamento"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

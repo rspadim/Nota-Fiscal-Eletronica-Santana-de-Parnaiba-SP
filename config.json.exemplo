@@ -1,0 +1,30 @@
+{
+  "ambiente": "producao",
+  "certificado": {
+    "caminho_cert": "c:\\certificado.pem",
+    "caminho_chave": "",
+    "senha": "Senha"
+  },
+  "empresa": {
+    "cnpj": "123456789",
+    "inscricao_municipal": "12345",
+    "razao_social": "Nome Empresa",
+    "logradouro": "Rua",
+    "numero": "16",
+    "complemento": "Complemento",
+    "bairro": "Bairro",
+    "cidade": "Santana de Parnaíba",
+    "estado": "SP",
+    "cep": "CEPPP-PPP",
+    "email": "rspadim@gmail.com.br"
+  },
+  "nfse": {
+    "caminho_xml_entrada": "c:/santana-parnaiba-xml/nfse_entrada",
+    "caminho_xml_enviados": "c:/santana-parnaiba-xml/nfse_enviadas",
+    "caminho_xml_saida": "c:/santana-parnaiba-xml/nfse_emitidas",
+    "salvar_xml_assinado": true,
+    "salvar_xml_resposta": true
+  },
+  "url_homologacao": "https://producaorestrita.simplissweb.com.br/api/v1",
+  "url_producao": "https://nfsesantanadeparnaiba.simplissweb.com.br"
+}
