@@ -6,6 +6,8 @@ Lê configuração de config.json e gerencia o envio de NFS-e
 import json
 import os
 import sys
+import time
+import shutil
 from datetime import datetime
 from pathlib import Path
 from nfse_simples import ClienteNFSeSimples
@@ -97,9 +99,26 @@ class GerenciadorNFSe:
                 pasta_saida = self.config.get("nfse", {}).get("caminho_xml_saida", "./nfse_emitidas")
                 os.makedirs(pasta_saida, exist_ok=True)
 
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                numero = resposta.get('numero_nfse', 'indefinido')
-                nome_arquivo = os.path.join(pasta_saida, f"nfse_{numero}_{timestamp}.xml")
+                # Gerar timestamp com nanosegundos para evitar duplicatas mesmo em reenvios
+                agora = datetime.now()
+                timestamp = agora.strftime("%Y%m%d_%H%M%S")
+                nanosegundos = time.time_ns() % 1_000_000_000
+                timestamp_completo = f"{timestamp}_{nanosegundos:09d}"
+
+                # Prioridade: ID completo > número DFS > número NFS-e > indefinido
+                # Sempre com timestamp_completo para evitar sobrescrita
+                id_nfse = resposta.get('id_nfse')
+                numero_dfs = resposta.get('numero_dfs')
+                numero_nfse = resposta.get('numero_nfse')
+
+                if id_nfse:
+                    nome_arquivo = os.path.join(pasta_saida, f"nfse_{id_nfse}_{timestamp_completo}.xml")
+                elif numero_dfs:
+                    nome_arquivo = os.path.join(pasta_saida, f"nfse_dfs{numero_dfs}_{timestamp_completo}.xml")
+                elif numero_nfse:
+                    nome_arquivo = os.path.join(pasta_saida, f"nfse_{numero_nfse}_{timestamp_completo}.xml")
+                else:
+                    nome_arquivo = os.path.join(pasta_saida, f"nfse_indefinido_{timestamp_completo}.xml")
 
                 self.cliente.salvar_resposta_xml(resposta["xml"], nome_arquivo)
 
@@ -184,6 +203,8 @@ class GerenciadorNFSe:
     def emitir_lote(self, pasta_xml: str = None) -> None:
         """
         Emite NFS-e em lote (todos os XMLs de uma pasta)
+        Move arquivos enviados com sucesso para pasta 'enviados'
+        Move arquivos com erro para pasta 'erros'
 
         Args:
             pasta_xml: Caminho da pasta com XMLs (usa config se não informado)
@@ -194,6 +215,12 @@ class GerenciadorNFSe:
         if not os.path.isdir(pasta_xml):
             print(f"[ERRO] Pasta não encontrada: {pasta_xml}")
             return
+
+        # Criar subpastas para organizar arquivos
+        pasta_enviados = os.path.join(pasta_xml, "enviados")
+        pasta_erros = os.path.join(pasta_xml, "erros")
+        os.makedirs(pasta_enviados, exist_ok=True)
+        os.makedirs(pasta_erros, exist_ok=True)
 
         arquivos_xml = list(Path(pasta_xml).glob("*.xml"))
 
@@ -214,13 +241,28 @@ class GerenciadorNFSe:
 
             if self.emitir_nfse(str(arquivo)):
                 sucesso_count += 1
+                # Mover arquivo para pasta 'enviados'
+                try:
+                    destino_enviados = os.path.join(pasta_enviados, arquivo.name)
+                    shutil.move(str(arquivo), destino_enviados)
+                    print(f"  → Movido para: enviados/{arquivo.name}")
+                except Exception as e:
+                    print(f"  [AVISO] Não foi possível mover arquivo: {e}")
             else:
                 erro_count += 1
+                # Mover arquivo para pasta 'erros'
+                try:
+                    destino_erros = os.path.join(pasta_erros, arquivo.name)
+                    shutil.move(str(arquivo), destino_erros)
+                    print(f"  → Movido para: erros/{arquivo.name}")
+                except Exception as e:
+                    print(f"  [AVISO] Não foi possível mover arquivo: {e}")
 
             print()
 
         print("="*60)
         print(f"RESUMO: {sucesso_count} sucesso(s), {erro_count} erro(s)")
+        print(f"Arquivos processados movidos para: enviados/ e erros/")
         print("="*60)
 
 

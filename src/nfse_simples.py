@@ -12,6 +12,7 @@ from xml.etree import ElementTree as ET
 from typing import Tuple, Dict, Optional
 from datetime import datetime
 import os
+import time
 from assinador_dps import AssinadorDPS
 
 
@@ -255,12 +256,26 @@ class ClienteNFSeSimples:
                         if "alertas" in data and data["alertas"]:
                             info["alertas"] = data["alertas"]
 
-                        # Tentar extrair número da NFS-e do XML
+                        # Tentar extrair identificadores únicos do XML
                         try:
                             root = ET.fromstring(xml_nfse)
-                            numero = root.findtext(".//Numero")
-                            if numero:
-                                info["numero_nfse"] = numero
+
+                            # Extrair ID completo do atributo 'Id' de infNFSe (ex: NFS35473041210280942000124000000000000626013217816921)
+                            infnfse = root.find(".//{http://www.sped.fazenda.gov.br/nfse}infNFSe")
+                            if infnfse is not None:
+                                id_completo = infnfse.get('Id')
+                                if id_completo:
+                                    info["id_nfse"] = id_completo
+
+                            # Extrair número da NFS-e (nNFSe)
+                            nfse_num = root.findtext(".//{http://www.sped.fazenda.gov.br/nfse}nNFSe")
+                            if nfse_num:
+                                info["numero_nfse"] = nfse_num
+
+                            # Extrair número único RPS (nDFSe)
+                            dfs_num = root.findtext(".//{http://www.sped.fazenda.gov.br/nfse}nDFSe")
+                            if dfs_num:
+                                info["numero_dfs"] = dfs_num
                         except:
                             pass
 
@@ -414,6 +429,8 @@ class ClienteNFSeSimples:
     def _salvar_xml_enviado(self, xml_assinado: str, arquivo_origem: str) -> str:
         """
         Salva cópia do XML assinado antes de enviar (auditoria)
+        Organiza em subpastas por data (YYYYMMDD)
+        Nomeia com timestamp + nanosegundos para evitar sobrescrita
 
         Args:
             xml_assinado: Conteúdo XML assinado
@@ -423,21 +440,27 @@ class ClienteNFSeSimples:
             Caminho do arquivo salvo
         """
         try:
-            # Criar pasta se não existir
-            pasta_enviadas = self.caminho_xml_enviados
-            os.makedirs(pasta_enviadas, exist_ok=True)
+            # Gerar timestamp com nanosegundos para evitar sobrescrita
+            agora = datetime.now()
+            data_pasta = agora.strftime("%Y%m%d")  # Subpasta: 20260127
+            timestamp = agora.strftime("%Y%m%d_%H%M%S")
+            nanosegundos = time.time_ns() % 1_000_000_000
+            timestamp_completo = f"{timestamp}_{nanosegundos:09d}"
+
+            # Criar pasta com data (nfse_enviadas/20260127)
+            pasta_data = os.path.join(self.caminho_xml_enviados, data_pasta)
+            os.makedirs(pasta_data, exist_ok=True)
 
             # Gerar nome do arquivo baseado na origem
             if isinstance(arquivo_origem, str) and arquivo_origem.startswith('<'):
                 # Se é string XML, gerar nome com timestamp
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                nome_base = f"dps_{timestamp}"
+                nome_base = f"dps_{timestamp_completo}"
             else:
                 # Usar nome do arquivo original sem extensão
                 nome_base = os.path.splitext(os.path.basename(arquivo_origem))[0]
 
-            # Arquivo .sign.xml com o XML assinado
-            nome_arquivo = os.path.join(pasta_enviadas, f"{nome_base}.sign.xml")
+            # Arquivo com formato: {nome_base}.YYYYMMDD_HHMMSS_nanosegundos.sign.xml
+            nome_arquivo = os.path.join(pasta_data, f"{nome_base}.{timestamp_completo}.sign.xml")
 
             # Salvar XML assinado
             with open(nome_arquivo, 'w', encoding='utf-8') as f:
