@@ -8,59 +8,15 @@ import os
 import sys
 import time
 import shutil
-import logging
+import builtins
 from datetime import datetime
 from pathlib import Path
 from nfse_simples import ClienteNFSeSimples
+from logger_config import print_and_log, input_and_log
 
-# Configurar logging
-def _configurar_logging():
-    """Configura logging com arquivo por dia"""
-    try:
-        with open('config.json', 'r', encoding='utf-8') as f:
-            config = json.load(f)
-            pasta_logs = config.get("nfse", {}).get("caminho_logs", "./logs")
-    except:
-        pasta_logs = "./logs"
-
-    if not os.path.isabs(pasta_logs):
-        pasta_logs = os.path.abspath(pasta_logs)
-
-    os.makedirs(pasta_logs, exist_ok=True)
-
-    logger = logging.getLogger('nfse')
-    logger.setLevel(logging.DEBUG)
-
-    if logger.handlers:
-        return logger
-
-    # Console
-    console = logging.StreamHandler(sys.stdout)
-    console.setLevel(logging.INFO)
-    console.setFormatter(logging.Formatter('[%(asctime)s] [%(levelname)-8s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
-    logger.addHandler(console)
-
-    # Arquivo por dia
-    data_hoje = datetime.now().strftime("%Y%m%d")
-    arquivo = logging.FileHandler(os.path.join(pasta_logs, f'{data_hoje}.log'), encoding='utf-8')
-    arquivo.setLevel(logging.DEBUG)
-    arquivo.setFormatter(logging.Formatter('[%(asctime)s] [%(levelname)-8s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
-    logger.addHandler(arquivo)
-
-    return logger
-
-logger = _configurar_logging()
-
-# Wrapper para input que também loga
-_input_original = input
-def input_log(prompt=''):
-    """Input com logging automático"""
-    if prompt:
-        logger.info(prompt.rstrip())
-    resposta = _input_original(prompt)
-    logger.info(f"[INPUT] {resposta}")
-    return resposta
-input = input_log
+# Substitui print() e input() padrão (com data/hora + salva em arquivo)
+builtins.print = print_and_log
+builtins.input = input_and_log
 
 
 class GerenciadorNFSe:
@@ -77,13 +33,13 @@ class GerenciadorNFSe:
         try:
             with open(arquivo_config, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-                logger.info(f"[OK] Configuração carregada de {arquivo_config}")
+                print(f"[OK] Configuração carregada de {arquivo_config}")
                 return config
         except FileNotFoundError:
-            logger.error(f" Arquivo de configuração não encontrado: {arquivo_config}")
+            print(f"[ERRO] Arquivo de configuração não encontrado: {arquivo_config}")
             sys.exit(1)
         except json.JSONDecodeError as e:
-            logger.error(f" Erro ao ler JSON: {e}")
+            print(f"[ERRO] Erro ao ler JSON: {e}")
             sys.exit(1)
 
     def _inicializar_cliente(self):
@@ -93,11 +49,11 @@ class GerenciadorNFSe:
         chave = cert_config.get("caminho_chave")
 
         if not certificado:
-            logger.info("[ERRO] Caminho do certificado não configurado em config.json")
+            print("[ERRO] Caminho do certificado não configurado em config.json")
             sys.exit(1)
 
         if not os.path.exists(certificado):
-            logger.error(f" Certificado não encontrado: {certificado}")
+            print(f"[ERRO] Certificado não encontrado: {certificado}")
             sys.exit(1)
 
         nfse_config = self.config.get("nfse", {})
@@ -111,7 +67,7 @@ class GerenciadorNFSe:
             url_producao=self.config.get("url_producao")
         )
 
-        logger.info(f"[OK] Cliente configurado para {self.config.get('ambiente', 'homologacao')}")
+        print(f"[OK] Cliente configurado para {self.config.get('ambiente', 'homologacao')}")
 
     def emitir_nfse(self, arquivo_xml: str) -> bool:
         """
@@ -123,26 +79,26 @@ class GerenciadorNFSe:
         Returns:
             True se sucesso, False caso contrário
         """
-        logger.info("\n" + "="*60)
-        logger.info("EMISSÃO DE NFS-e")
-        logger.info("="*60)
+        print("\n" + "="*60)
+        print("EMISSÃO DE NFS-e")
+        print("="*60)
 
         if not os.path.exists(arquivo_xml):
-            logger.error(f" Arquivo não encontrado: {arquivo_xml}")
+            print(f"[ERRO] Arquivo não encontrado: {arquivo_xml}")
             return False
 
-        logger.info(f"Arquivo: {arquivo_xml}")
+        print(f"Arquivo: {arquivo_xml}")
 
         sucesso, resposta = self.cliente.emitir_nfse_xml(arquivo_xml)
 
         if sucesso:
-            logger.info("\n[OK] NFS-e emitida com SUCESSO!")
+            print("\n[OK] NFS-e emitida com SUCESSO!")
 
             if "numero_nfse" in resposta:
-                logger.info(f"  Número da NFS-e: {resposta['numero_nfse']}")
+                print(f"  Número da NFS-e: {resposta['numero_nfse']}")
 
             if "chave_acesso" in resposta:
-                logger.info(f"  Chave de Acesso: {resposta['chave_acesso']}")
+                print(f"  Chave de Acesso: {resposta['chave_acesso']}")
 
             # Salvar XML da resposta
             if resposta.get("xml") and self.config.get("nfse", {}).get("salvar_xml_resposta"):
@@ -174,13 +130,13 @@ class GerenciadorNFSe:
 
             return True
         else:
-            logger.info("\n[ERRO] Erro na emissão:")
+            print("\n[ERRO] Erro na emissão:")
             erro = resposta.get("erro", resposta)
             if isinstance(erro, dict):
                 for chave, valor in erro.items():
-                    logger.info(f"  {chave}: {valor}")
+                    print(f"  {chave}: {valor}")
             else:
-                logger.info(f"  {erro}")
+                print(f"  {erro}")
             return False
 
     def consultar_nfse(self, chave_acesso: str) -> bool:
@@ -193,15 +149,15 @@ class GerenciadorNFSe:
         Returns:
             True se sucesso, False caso contrário
         """
-        logger.info("\n" + "="*60)
-        logger.info("CONSULTA DE NFS-e")
-        logger.info("="*60)
-        logger.info(f"Chave de Acesso: {chave_acesso}")
+        print("\n" + "="*60)
+        print("CONSULTA DE NFS-e")
+        print("="*60)
+        print(f"Chave de Acesso: {chave_acesso}")
 
         sucesso, resposta = self.cliente.consultar_nfse(chave_acesso)
 
         if sucesso:
-            logger.info("\n[OK] NFS-e consultada com SUCESSO!")
+            print("\n[OK] NFS-e consultada com SUCESSO!")
 
             if resposta.get("xml"):
                 # Salvar XML
@@ -215,8 +171,8 @@ class GerenciadorNFSe:
 
             return True
         else:
-            logger.info("\n[ERRO] Erro na consulta:")
-            logger.info(f"  {resposta.get('erro')}")
+            print("\n[ERRO] Erro na consulta:")
+            print(f"  {resposta.get('erro')}")
             return False
 
     def cancelar_nfse(self, chave_acesso: str, arquivo_evento: str) -> bool:
@@ -230,24 +186,24 @@ class GerenciadorNFSe:
         Returns:
             True se sucesso, False caso contrário
         """
-        logger.info("\n" + "="*60)
-        logger.info("CANCELAMENTO DE NFS-e")
-        logger.info("="*60)
-        logger.info(f"Chave de Acesso: {chave_acesso}")
-        logger.info(f"Arquivo do Evento: {arquivo_evento}")
+        print("\n" + "="*60)
+        print("CANCELAMENTO DE NFS-e")
+        print("="*60)
+        print(f"Chave de Acesso: {chave_acesso}")
+        print(f"Arquivo do Evento: {arquivo_evento}")
 
         if not os.path.exists(arquivo_evento):
-            logger.error(f" Arquivo de evento não encontrado: {arquivo_evento}")
+            print(f"[ERRO] Arquivo de evento não encontrado: {arquivo_evento}")
             return False
 
         sucesso, resposta = self.cliente.cancelar_nfse(chave_acesso, arquivo_evento)
 
         if sucesso:
-            logger.info("\n[OK] NFS-e cancelada com SUCESSO!")
+            print("\n[OK] NFS-e cancelada com SUCESSO!")
             return True
         else:
-            logger.info("\n[ERRO] Erro no cancelamento:")
-            logger.info(f"  {resposta.get('erro')}")
+            print("\n[ERRO] Erro no cancelamento:")
+            print(f"  {resposta.get('erro')}")
             return False
 
     def emitir_lote(self, pasta_xml: str = None) -> None:
@@ -263,7 +219,7 @@ class GerenciadorNFSe:
             pasta_xml = self.config.get("nfse", {}).get("caminho_xml_entrada", ".")
 
         if not os.path.isdir(pasta_xml):
-            logger.error(f" Pasta não encontrada: {pasta_xml}")
+            print(f"[ERRO] Pasta não encontrada: {pasta_xml}")
             return
 
         # Criar subpastas para organizar arquivos
@@ -275,19 +231,19 @@ class GerenciadorNFSe:
         arquivos_xml = list(Path(pasta_xml).glob("*.xml"))
 
         if not arquivos_xml:
-            logger.error(f" Nenhum arquivo XML encontrado em: {pasta_xml}")
+            print(f"[ERRO] Nenhum arquivo XML encontrado em: {pasta_xml}")
             return
 
-        logger.info(f"\n{'='*60}")
-        logger.info(f"EMISSÃO EM LOTE")
-        logger.info(f"{'='*60}")
-        logger.info(f"Total de arquivos: {len(arquivos_xml)}\n")
+        print(f"\n{'='*60}")
+        print(f"EMISSÃO EM LOTE")
+        print(f"{'='*60}")
+        print(f"Total de arquivos: {len(arquivos_xml)}\n")
 
         sucesso_count = 0
         erro_count = 0
 
         for i, arquivo in enumerate(arquivos_xml, 1):
-            logger.info(f"[{i}/{len(arquivos_xml)}] Processando: {arquivo.name}")
+            print(f"[{i}/{len(arquivos_xml)}] Processando: {arquivo.name}")
 
             if self.emitir_nfse(str(arquivo)):
                 sucesso_count += 1
@@ -295,25 +251,25 @@ class GerenciadorNFSe:
                 try:
                     destino_enviados = os.path.join(pasta_enviados, arquivo.name)
                     shutil.move(str(arquivo), destino_enviados)
-                    logger.info(f"  → Movido para: enviados/{arquivo.name}")
+                    print(f"  → Movido para: enviados/{arquivo.name}")
                 except Exception as e:
-                    logger.info(f"  [AVISO] Não foi possível mover arquivo: {e}")
+                    print(f"  [AVISO] Não foi possível mover arquivo: {e}")
             else:
                 erro_count += 1
                 # Mover arquivo para pasta 'erros'
                 try:
                     destino_erros = os.path.join(pasta_erros, arquivo.name)
                     shutil.move(str(arquivo), destino_erros)
-                    logger.info(f"  → Movido para: erros/{arquivo.name}")
+                    print(f"  → Movido para: erros/{arquivo.name}")
                 except Exception as e:
-                    logger.info(f"  [AVISO] Não foi possível mover arquivo: {e}")
+                    print(f"  [AVISO] Não foi possível mover arquivo: {e}")
 
-            logger.info()
+            print()
 
-        logger.info("="*60)
-        logger.info(f"RESUMO: {sucesso_count} sucesso(s), {erro_count} erro(s)")
-        logger.info(f"Arquivos processados movidos para: enviados/ e erros/")
-        logger.info("="*60)
+        print("="*60)
+        print(f"RESUMO: {sucesso_count} sucesso(s), {erro_count} erro(s)")
+        print(f"Arquivos processados movidos para: enviados/ e erros/")
+        print("="*60)
 
 
 def menu_principal():
@@ -321,16 +277,16 @@ def menu_principal():
     gerenciador = GerenciadorNFSe()
 
     while True:
-        logger.info("\n" + "="*60)
-        logger.info("SISTEMA DE EMISSÃO DE NFS-e")
-        logger.info("SANTANA DE PARNAÍBA - SIMPLISS")
-        logger.info("="*60)
-        logger.info("1. Emitir NFS-e (arquivo específico)")
-        logger.info("2. Consultar NFS-e")
-        logger.info("3. Cancelar NFS-e")
-        logger.info("4. Emitir em lote (pasta)")
-        logger.info("5. Sair")
-        logger.info("-"*60)
+        print("\n" + "="*60)
+        print("SISTEMA DE EMISSÃO DE NFS-e")
+        print("SANTANA DE PARNAÍBA - SIMPLISS")
+        print("="*60)
+        print("1. Emitir NFS-e (arquivo específico)")
+        print("2. Consultar NFS-e")
+        print("3. Cancelar NFS-e")
+        print("4. Emitir em lote (pasta)")
+        print("5. Sair")
+        print("-"*60)
 
         opcao = input("Escolha uma opção: ").strip()
 
@@ -355,11 +311,11 @@ def menu_principal():
             gerenciador.emitir_lote(pasta if pasta else None)
 
         elif opcao == "5":
-            logger.info("Encerrando...")
+            print("Encerrando...")
             break
 
         else:
-            logger.info("[ERRO] Opção inválida!")
+            print("[ERRO] Opção inválida!")
 
 
 if __name__ == "__main__":
@@ -383,13 +339,13 @@ if __name__ == "__main__":
             gerenciador.emitir_lote(pasta)
 
         else:
-            logger.info("Uso:")
-            logger.info("  python main.py emitir <arquivo.xml>")
-            logger.info("  python main.py consultar <chave_acesso>")
-            logger.info("  python main.py cancelar <chave_acesso> <evento.xml>")
-            logger.info("  python main.py lote [pasta]")
-            logger.info("\nOu execute sem argumentos para menu interativo:")
-            logger.info("  python main.py")
+            print("Uso:")
+            print("  python main.py emitir <arquivo.xml>")
+            print("  python main.py consultar <chave_acesso>")
+            print("  python main.py cancelar <chave_acesso> <evento.xml>")
+            print("  python main.py lote [pasta]")
+            print("\nOu execute sem argumentos para menu interativo:")
+            print("  python main.py")
 
     else:
         # Menu interativo

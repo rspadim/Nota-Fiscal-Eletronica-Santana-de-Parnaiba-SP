@@ -22,6 +22,7 @@
     "caminho_xml_entrada": "c:/santana-parnaiba-xml/nfse_entrada",
     "caminho_xml_enviados": "c:/santana-parnaiba-xml/nfse_enviadas",
     "caminho_xml_saida": "c:/santana-parnaiba-xml/nfse_emitidas",
+    "caminho_logs": "./logs",
     "salvar_xml_assinado": true,
     "salvar_xml_resposta": true
   },
