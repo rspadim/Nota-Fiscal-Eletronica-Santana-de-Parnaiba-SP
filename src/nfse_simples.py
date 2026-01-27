@@ -476,17 +476,39 @@ class ClienteNFSeSimples:
     def salvar_resposta_xml(self, xml: str, nome_arquivo: str = None) -> str:
         """
         Salva XML da resposta em arquivo
+        Organiza em subpastas por data (YYYYMMDD)
 
         Args:
             xml: Conteúdo XML
-            nome_arquivo: Nome do arquivo (gerado automaticamente se não informado)
+            nome_arquivo: Nome do arquivo com caminho (gerado automaticamente se não informado)
 
         Returns:
             Caminho do arquivo salvo
         """
+        # Gerar data da subpasta
+        agora = datetime.now()
+        data_pasta = agora.strftime("%Y%m%d")  # Subpasta: 20260127
+
         if not nome_arquivo:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             nome_arquivo = f"nfse_{timestamp}.xml"
+
+        # Extrair diretório e nome do arquivo
+        if os.path.isabs(nome_arquivo):
+            # Se é caminho absoluto, extrair pasta base e nome
+            diretorio_base = os.path.dirname(nome_arquivo)
+            nome_arquivo_apenas = os.path.basename(nome_arquivo)
+        else:
+            # Se é relativo, usar diretório atual
+            diretorio_base = os.getcwd()
+            nome_arquivo_apenas = nome_arquivo
+
+        # Criar subpasta com data (ex: nfse_emitidas/20260127)
+        pasta_data = os.path.join(diretorio_base, data_pasta)
+        os.makedirs(pasta_data, exist_ok=True)
+
+        # Caminho completo do arquivo na subpasta
+        caminho_completo = os.path.join(pasta_data, nome_arquivo_apenas)
 
         # Formatar XML para legibilidade
         try:
@@ -497,11 +519,11 @@ class ClienteNFSeSimples:
             xml_formatado = xml
 
         # Salvar
-        with open(nome_arquivo, 'w', encoding='utf-8') as f:
+        with open(caminho_completo, 'w', encoding='utf-8') as f:
             f.write(xml_formatado)
 
-        print(f"✓ XML salvo em: {nome_arquivo}")
-        return nome_arquivo
+        print(f"✓ XML salvo em: {caminho_completo}")
+        return caminho_completo
 
     @staticmethod
     def _indenta_elemento(elem, nivel=0):
