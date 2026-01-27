@@ -8,9 +8,14 @@ import os
 import sys
 import time
 import shutil
+import builtins
 from datetime import datetime
 from pathlib import Path
 from nfse_simples import ClienteNFSeSimples
+from logger_config import print_and_log
+
+# Substitui print() padrão por print_and_log (com data/hora + salva em arquivo)
+builtins.print = print_and_log
 
 
 class GerenciadorNFSe:
@@ -27,13 +32,13 @@ class GerenciadorNFSe:
         try:
             with open(arquivo_config, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-                print(f"[OK] Configuração carregada de {arquivo_config}")
+                logger.ok(f"Configuração carregada de {arquivo_config}")
                 return config
         except FileNotFoundError:
-            print(f"[ERRO] Arquivo de configuração não encontrado: {arquivo_config}")
+            logger.erro(f"Arquivo de configuração não encontrado: {arquivo_config}")
             sys.exit(1)
         except json.JSONDecodeError as e:
-            print(f"[ERRO] Erro ao ler JSON: {e}")
+            logger.erro(f"Erro ao ler JSON: {e}")
             sys.exit(1)
 
     def _inicializar_cliente(self):
@@ -47,7 +52,7 @@ class GerenciadorNFSe:
             sys.exit(1)
 
         if not os.path.exists(certificado):
-            print(f"[ERRO] Certificado não encontrado: {certificado}")
+            logger.erro(f"Certificado não encontrado: {certificado}")
             sys.exit(1)
 
         nfse_config = self.config.get("nfse", {})
@@ -61,7 +66,7 @@ class GerenciadorNFSe:
             url_producao=self.config.get("url_producao")
         )
 
-        print(f"[OK] Cliente configurado para {self.config.get('ambiente', 'homologacao')}")
+        logger.ok(f"Cliente configurado para {self.config.get('ambiente', 'homologacao')}")
 
     def emitir_nfse(self, arquivo_xml: str) -> bool:
         """
@@ -78,7 +83,7 @@ class GerenciadorNFSe:
         print("="*60)
 
         if not os.path.exists(arquivo_xml):
-            print(f"[ERRO] Arquivo não encontrado: {arquivo_xml}")
+            logger.erro(f"Arquivo não encontrado: {arquivo_xml}")
             return False
 
         print(f"Arquivo: {arquivo_xml}")
@@ -187,7 +192,7 @@ class GerenciadorNFSe:
         print(f"Arquivo do Evento: {arquivo_evento}")
 
         if not os.path.exists(arquivo_evento):
-            print(f"[ERRO] Arquivo de evento não encontrado: {arquivo_evento}")
+            logger.erro(f"Arquivo de evento não encontrado: {arquivo_evento}")
             return False
 
         sucesso, resposta = self.cliente.cancelar_nfse(chave_acesso, arquivo_evento)
@@ -213,7 +218,7 @@ class GerenciadorNFSe:
             pasta_xml = self.config.get("nfse", {}).get("caminho_xml_entrada", ".")
 
         if not os.path.isdir(pasta_xml):
-            print(f"[ERRO] Pasta não encontrada: {pasta_xml}")
+            logger.erro(f"Pasta não encontrada: {pasta_xml}")
             return
 
         # Criar subpastas para organizar arquivos
@@ -225,7 +230,7 @@ class GerenciadorNFSe:
         arquivos_xml = list(Path(pasta_xml).glob("*.xml"))
 
         if not arquivos_xml:
-            print(f"[ERRO] Nenhum arquivo XML encontrado em: {pasta_xml}")
+            logger.erro(f"Nenhum arquivo XML encontrado em: {pasta_xml}")
             return
 
         print(f"\n{'='*60}")
