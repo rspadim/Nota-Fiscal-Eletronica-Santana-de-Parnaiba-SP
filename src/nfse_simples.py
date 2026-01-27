@@ -8,12 +8,15 @@ import json
 import gzip
 import base64
 import requests
+import logging
 from xml.etree import ElementTree as ET
 from typing import Tuple, Dict, Optional
 from datetime import datetime
 import os
 import time
 from assinador_dps import AssinadorDPS
+
+logger = logging.getLogger('nfse')
 
 
 class ClienteNFSeSimples:
@@ -93,19 +96,19 @@ class ClienteNFSeSimples:
 
             # ===== NOVA: Assinar XML =====
             if self.certificado_path and os.path.exists(self.certificado_path):
-                print("[INFO] Assinando XML com certificado digital...")
+                logger.info("[INFO] Assinando XML com certificado digital...")
                 try:
                     assinador = AssinadorDPS(
                         self.certificado_path,
                         self.chave_privada_path
                     )
                     xml_content = assinador.assinar_xml(xml_content)
-                    print("[OK] XML assinado com sucesso!")
+                    logger.info("[OK] XML assinado com sucesso!")
                 except Exception as e:
-                    print(f"[ERRO] Falha ao assinar XML: {e}")
+                    logger.info(f"[ERRO] Falha ao assinar XML: {e}")
                     return False, {"erro": f"Falha ao assinar: {str(e)}"}
             else:
-                print("[AVISO] Certificado não configurado. Enviando XML sem assinatura...")
+                logger.info("[AVISO] Certificado não configurado. Enviando XML sem assinatura...")
 
             # ===== NOVA: Salvar cópia assinada antes de enviar =====
             if self.salvar_xml_assinado:
@@ -127,7 +130,7 @@ class ClienteNFSeSimples:
 
             # Enviar
             url = f"{self.base_url}/nfse"
-            print(f"Enviando para: {url}")
+            logger.info(f"Enviando para: {url}")
 
             response = self.session.post(url, json=payload, headers=headers, verify=True)
 
@@ -153,7 +156,7 @@ class ClienteNFSeSimples:
             headers = {"Accept": "application/json"}
             url = f"{self.base_url}/nfse/{chave_acesso}"
 
-            print(f"Consultando: {url}")
+            logger.info(f"Consultando: {url}")
             response = self.session.get(url, headers=headers, verify=True)
 
             return self._processar_resposta_consulta(response)
@@ -193,7 +196,7 @@ class ClienteNFSeSimples:
             }
 
             url = f"{self.base_url}/nfse/{chave_acesso}/eventos"
-            print(f"Cancelando em: {url}")
+            logger.info(f"Cancelando em: {url}")
 
             response = self.session.post(url, json=payload, headers=headers, verify=True)
 
@@ -218,7 +221,7 @@ class ClienteNFSeSimples:
             headers = {"Accept": "application/json"}
             url = f"{self.base_url}/nfse/{chave_acesso}/eventos/{tipo_evento}/{num_seq_evento}"
 
-            print(f"Consultando evento: {url}")
+            logger.info(f"Consultando evento: {url}")
             response = self.session.get(url, headers=headers, verify=True)
 
             return self._processar_resposta_evento_get(response)
@@ -466,11 +469,11 @@ class ClienteNFSeSimples:
             with open(nome_arquivo, 'w', encoding='utf-8') as f:
                 f.write(xml_assinado)
 
-            print(f"[OK] XML assinado salvo em: {nome_arquivo}")
+            logger.info(f"[OK] XML assinado salvo em: {nome_arquivo}")
             return nome_arquivo
 
         except Exception as e:
-            print(f"[AVISO] Não foi possível salvar cópia assinada: {e}")
+            logger.info(f"[AVISO] Não foi possível salvar cópia assinada: {e}")
             return None
 
     def salvar_resposta_xml(self, xml: str, nome_arquivo: str = None) -> str:
@@ -522,7 +525,7 @@ class ClienteNFSeSimples:
         with open(caminho_completo, 'w', encoding='utf-8') as f:
             f.write(xml_formatado)
 
-        print(f"✓ XML salvo em: {caminho_completo}")
+        logger.info(f"✓ XML salvo em: {caminho_completo}")
         return caminho_completo
 
     @staticmethod
