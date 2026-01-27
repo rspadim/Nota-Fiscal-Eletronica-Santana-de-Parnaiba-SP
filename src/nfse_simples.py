@@ -15,10 +15,11 @@ from datetime import datetime
 import os
 import time
 from assinador_dps import AssinadorDPS
-from logger_config import print_and_log
+from logger_config import print_and_log, input_and_log
 
-# Substitui print() padrão por print_and_log (com data/hora + salva em arquivo)
+# Substitui print() e input() padrão (com data/hora + salva em arquivo)
 builtins.print = print_and_log
+builtins.input = input_and_log
 
 
 class ClienteNFSeSimples:

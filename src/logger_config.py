@@ -8,8 +8,9 @@ import json
 import builtins
 from datetime import datetime
 
-# Guardar referência original do print ANTES de modificar
+# Guardar referências originais ANTES de modificar
 _print_original = builtins.print
+_input_original = builtins.input
 
 # Cache da pasta de logs
 _pasta_logs_cache = None
@@ -69,3 +70,35 @@ def print_and_log(*args, **kwargs):
             f.write(linha)
     except Exception:
         pass  # Silencioso se não conseguir escrever
+
+
+def input_and_log(prompt=''):
+    """Input normal + salva em arquivo de log (YYYYMMDD.log)"""
+    # Input normal do console usando a referência original
+    resposta = _input_original(prompt)
+
+    # Obter caminho da pasta de logs
+    pasta_logs = _obter_pasta_logs()
+
+    # Arquivo de log por dia
+    data_hoje = datetime.now().strftime("%Y%m%d")
+    arquivo_log = os.path.join(pasta_logs, f"{data_hoje}.log")
+
+    # Gravar prompt + resposta em arquivo
+    try:
+        hora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # Salvar prompt (se existir)
+        if prompt:
+            linha_prompt = f"[{hora}] {prompt}"
+            with open(arquivo_log, 'a', encoding='utf-8') as f:
+                f.write(linha_prompt)
+
+        # Salvar resposta do usuário
+        linha_resposta = f"{resposta}\n"
+        with open(arquivo_log, 'a', encoding='utf-8') as f:
+            f.write(linha_resposta)
+    except Exception:
+        pass  # Silencioso se não conseguir escrever
+
+    return resposta
