@@ -24,6 +24,7 @@ class GerenciadorNFSe:
 
     def __init__(self, arquivo_config: str = "config.json"):
         """Inicializa o gerenciador com arquivo de configuração"""
+        self._caminho_config = os.path.abspath(arquivo_config)
         self.config = self._carregar_config(arquivo_config)
         self.cliente = None
         self._inicializar_cliente()
@@ -31,9 +32,11 @@ class GerenciadorNFSe:
     def _carregar_config(self, arquivo_config: str) -> dict:
         """Carrega configurações do arquivo JSON"""
         try:
-            with open(arquivo_config, 'r', encoding='utf-8') as f:
+            caminho_config = os.path.abspath(arquivo_config)
+            with open(caminho_config, 'r', encoding='utf-8') as f:
                 config = json.load(f)
                 print(f"[OK] Configuração carregada de {arquivo_config}")
+                self._normalizar_caminhos_config(config, os.path.dirname(caminho_config))
                 return config
         except FileNotFoundError:
             print(f"[ERRO] Arquivo de configuração não encontrado: {arquivo_config}")
@@ -41,6 +44,31 @@ class GerenciadorNFSe:
         except json.JSONDecodeError as e:
             print(f"[ERRO] Erro ao ler JSON: {e}")
             sys.exit(1)
+
+    @staticmethod
+    def _resolver_caminho(caminho: str, base_dir: str) -> str:
+        """Resolve caminho relativo do config para absoluto, com normalização."""
+        if not caminho:
+            return caminho
+        if os.path.isabs(caminho):
+            return os.path.normpath(caminho)
+        return os.path.normpath(os.path.abspath(os.path.join(base_dir, caminho)))
+
+    def _normalizar_caminhos_config(self, config: dict, base_dir: str) -> None:
+        """Normaliza em memória os caminhos configuráveis para evitar ambiguidades de cwd."""
+        cert_config = config.get("certificado", {})
+        if isinstance(cert_config, dict):
+            for chave in ("caminho_cert", "caminho_chave"):
+                valor = cert_config.get(chave)
+                if isinstance(valor, str):
+                    cert_config[chave] = self._resolver_caminho(valor, base_dir)
+
+        nfse_config = config.get("nfse", {})
+        if isinstance(nfse_config, dict):
+            for chave in ("caminho_xml_entrada", "caminho_xml_enviados", "caminho_xml_saida", "caminho_logs"):
+                valor = nfse_config.get(chave)
+                if isinstance(valor, str):
+                    nfse_config[chave] = self._resolver_caminho(valor, base_dir)
 
     def _inicializar_cliente(self):
         """Inicializa o cliente NFS-e com as configurações"""
@@ -67,7 +95,25 @@ class GerenciadorNFSe:
             url_producao=self.config.get("url_producao")
         )
 
+        self._print_caminhos_ativos()
         print(f"[OK] Cliente configurado para {self.config.get('ambiente', 'homologacao')}")
+
+    def _print_caminhos_ativos(self) -> None:
+        """Exibe caminhos efetivos usados pela aplicação."""
+        nfse_config = self.config.get("nfse", {})
+        cert_config = self.config.get("certificado", {})
+
+        print("-" * 60)
+        print("[INFO] Caminhos em uso")
+        print(f"  config: {self._caminho_config}")
+        print(f"  cwd: {os.getcwd()}")
+        print(f"  certificado: {cert_config.get('caminho_cert', '')}")
+        print(f"  chave_privada: {cert_config.get('caminho_chave', '')}")
+        print(f"  xml_entrada: {nfse_config.get('caminho_xml_entrada', '')}")
+        print(f"  xml_enviados: {nfse_config.get('caminho_xml_enviados', '')}")
+        print(f"  xml_saida: {nfse_config.get('caminho_xml_saida', '')}")
+        print(f"  logs: {nfse_config.get('caminho_logs', '')}")
+        print("-" * 60)
 
     def emitir_nfse(self, arquivo_xml: str) -> bool:
         """

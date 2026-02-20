@@ -499,15 +499,15 @@ class ClienteNFSeSimples:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             nome_arquivo = f"nfse_{timestamp}.xml"
 
-        # Extrair diretório e nome do arquivo
-        if os.path.isabs(nome_arquivo):
-            # Se é caminho absoluto, extrair pasta base e nome
-            diretorio_base = os.path.dirname(nome_arquivo)
-            nome_arquivo_apenas = os.path.basename(nome_arquivo)
-        else:
-            # Se é relativo, usar diretório atual
-            diretorio_base = os.getcwd()
-            nome_arquivo_apenas = nome_arquivo
+        # Resolve caminho relativo (incluindo ../ e ..\) antes de separar pasta/nome
+        caminho_resolvido = nome_arquivo
+        if not os.path.isabs(caminho_resolvido):
+            caminho_resolvido = os.path.abspath(caminho_resolvido)
+        caminho_resolvido = os.path.normpath(caminho_resolvido)
+
+        # Extrair diretório base e nome do arquivo
+        diretorio_base = os.path.dirname(caminho_resolvido)
+        nome_arquivo_apenas = os.path.basename(caminho_resolvido)
 
         # Criar subpasta com data (ex: nfse_emitidas/20260127)
         pasta_data = os.path.join(diretorio_base, data_pasta)
