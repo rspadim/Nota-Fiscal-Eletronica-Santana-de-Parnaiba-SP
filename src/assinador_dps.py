@@ -142,6 +142,83 @@ class AssinadorDPS:
         except Exception as e:
             raise RuntimeError(f"Erro ao assinar XML: {str(e)}")
 
+    def assinar_evento(self, xml_conteudo: str) -> str:
+        """
+        Assina um XML de Pedido de Registro de Evento (pedRegEvento)
+        Assina o elemento infPedReg com assinatura XAdES
+
+        Args:
+            xml_conteudo: Conteúdo do XML pedRegEvento como string
+
+        Returns:
+            XML assinado como string
+        """
+        try:
+            from signxml import XMLSigner
+            from cryptography.hazmat.primitives import serialization
+            from cryptography.hazmat.backends import default_backend
+
+            with open(self.chave_privada_path, 'rb') as f:
+                key_data = f.read()
+
+            private_key = serialization.load_pem_private_key(
+                key_data, password=None, backend=default_backend()
+            )
+
+            with open(self.certificado_path, 'rb') as f:
+                cert_data = f.read()
+
+            xml_bytes = xml_conteudo.encode('utf-8')
+            root = etree.fromstring(xml_bytes)
+
+            ns = 'http://www.sped.fazenda.gov.br/nfse'
+            elemento_inf = root.find(f'.//{{{ns}}}infPedReg')
+            if elemento_inf is None:
+                raise ValueError("Elemento infPedReg não encontrado no XML")
+
+            elemento_id = elemento_inf.get('Id')
+            if not elemento_id:
+                raise ValueError("Atributo Id não encontrado no infPedReg")
+
+            signer_configs = [
+                {"name": "SHA1 (padrão SEFIN)", "signature_algorithm": "rsa-sha1", "digest_algorithm": "sha1"},
+                {"name": "SHA256 (moderno)", "signature_algorithm": "rsa-sha256", "digest_algorithm": "sha256"},
+            ]
+
+            xml_assinado = None
+            ultimo_erro = None
+
+            for config in signer_configs:
+                try:
+                    signer = XMLSigner(
+                        c14n_algorithm="http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
+                        signature_algorithm=config["signature_algorithm"],
+                        digest_algorithm=config["digest_algorithm"],
+                    )
+                    xml_assinado = signer.sign(
+                        root, key=private_key, cert=cert_data,
+                        reference_uri=f"#{elemento_id}"
+                    )
+                    print(f"[OK] Evento assinado com {config['name']}")
+                    break
+                except Exception as e:
+                    ultimo_erro = str(e)
+                    print(f"[TENTATIVA] {config['name']} falhou: {e}")
+                    continue
+
+            if xml_assinado is None:
+                raise RuntimeError(f"Falha ao assinar evento. Último erro: {ultimo_erro}")
+
+            return etree.tostring(xml_assinado, encoding='unicode', pretty_print=True)
+
+        except ImportError as e:
+            raise ImportError(
+                f"Biblioteca 'signxml' não encontrada. "
+                f"Instale com: pip install signxml cryptography\nErro: {e}"
+            )
+        except Exception as e:
+            raise RuntimeError(f"Erro ao assinar evento: {str(e)}")
+
     def validar_assinatura(self, xml_assinado: str) -> bool:
         """
         Valida se o XML está corretamente assinado

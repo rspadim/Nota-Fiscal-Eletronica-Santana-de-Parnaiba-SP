@@ -167,13 +167,14 @@ class ClienteNFSeSimples:
         except Exception as e:
             return False, {"erro": str(e)}
 
-    def cancelar_nfse(self, chave_acesso: str, arquivo_evento: str) -> Tuple[bool, Dict]:
+    def cancelar_nfse(self, chave_acesso: str, arquivo_evento: str, assinar: bool = True) -> Tuple[bool, Dict]:
         """
         Cancela uma NFS-e usando arquivo de evento XML
 
         Args:
             chave_acesso: Chave de acesso da NFS-e
             arquivo_evento: Caminho ou conteúdo XML do evento
+            assinar: Se True, assina o XML do evento antes de enviar
 
         Returns:
             (sucesso, resposta)
@@ -185,6 +186,20 @@ class ClienteNFSeSimples:
             else:
                 with open(arquivo_evento, 'r', encoding='utf-8') as f:
                     xml_content = f.read()
+
+            # Assinar XML do evento se necessário
+            if assinar and self.certificado_path and os.path.exists(self.certificado_path):
+                print("[INFO] Assinando evento com certificado digital...")
+                try:
+                    assinador = AssinadorDPS(
+                        self.certificado_path,
+                        self.chave_privada_path
+                    )
+                    xml_content = assinador.assinar_evento(xml_content)
+                    print("[OK] Evento assinado com sucesso!")
+                except Exception as e:
+                    print(f"[ERRO] Falha ao assinar evento: {e}")
+                    return False, {"erro": f"Falha ao assinar: {str(e)}"}
 
             # Compactar e codificar
             xml_bytes = xml_content.encode('utf-8')

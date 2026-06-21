@@ -11,6 +11,7 @@ import shutil
 import builtins
 from datetime import datetime
 from pathlib import Path
+from xml.etree import ElementTree as ET
 from nfse_simples import ClienteNFSeSimples
 from logger_config import print_and_log, input_and_log
 
@@ -252,6 +253,167 @@ class GerenciadorNFSe:
             print(f"  {resposta.get('erro')}")
             return False
 
+    def cancelamento_assistido(self, arquivo_nfse: str = None) -> bool:
+        """
+        Cancelamento assistido de NFS-e
+        Lê o XML da NFS-e, coleta motivo, gera evento, confirma e envia
+
+        Args:
+            arquivo_nfse: Caminho do XML da NFS-e (opcional, pergunta se não informado)
+
+        Returns:
+            True se sucesso, False caso contrário
+        """
+        print("\n" + "="*60)
+        print("CANCELAMENTO ASSISTIDO DE NFS-e")
+        print("="*60)
+
+        # 1. Obter caminho do XML da NFS-e
+        if not arquivo_nfse:
+            arquivo_nfse = input("Caminho do XML da NFS-e: ").strip()
+        if not arquivo_nfse:
+            print("[ERRO] Nenhum arquivo informado.")
+            return False
+
+        if not os.path.exists(arquivo_nfse):
+            print(f"[ERRO] Arquivo não encontrado: {arquivo_nfse}")
+            return False
+
+        # 2. Ler e parsear o XML da NFS-e
+        try:
+            with open(arquivo_nfse, 'r', encoding='utf-8') as f:
+                xml_nfse = f.read()
+
+            ns = 'http://www.sped.fazenda.gov.br/nfse'
+            root = ET.fromstring(xml_nfse)
+
+            inf_nfse = root.find(f'.//{{{ns}}}infNFSe')
+            if inf_nfse is None:
+                print("[ERRO] Elemento infNFSe não encontrado no XML")
+                return False
+
+            # Extrair chave de acesso (atributo Id)
+            chave_completa = inf_nfse.get('Id', '')
+            if not chave_completa.startswith('NFS'):
+                print("[ERRO] ID da NFS-e não começa com 'NFS'")
+                return False
+            chave_acesso = chave_completa[3:].zfill(50)  # Remove "NFS" e completa para 50 dígitos (XSD)
+
+            # Extrair dados relevantes
+            n_nfse = root.findtext(f'.//{{{ns}}}nNFSe', '')
+            n_dfse = root.findtext(f'.//{{{ns}}}nDFSe', '')
+            tp_amb = root.findtext(f'.//{{{ns}}}tpAmb', '1')
+            cnpj_emit = root.findtext(f'.//{{{ns}}}emit/{{{ns}}}CNPJ', '')
+            x_nome_emit = root.findtext(f'.//{{{ns}}}emit/{{{ns}}}xNome', '')
+            v_bc = root.findtext(f'.//{{{ns}}}valores/{{{ns}}}vBC', '')
+            v_issqn = root.findtext(f'.//{{{ns}}}valores/{{{ns}}}vISSQN', '')
+            v_liq = root.findtext(f'.//{{{ns}}}valores/{{{ns}}}vLiq', '')
+
+        except ET.ParseError as e:
+            print(f"[ERRO] XML inválido: {e}")
+            return False
+        except Exception as e:
+            print(f"[ERRO] Ao ler XML: {e}")
+            return False
+
+        # 3. Mostrar dados da NFS-e
+        print("\n" + "-"*60)
+        print("DADOS DA NFS-e:")
+        print(f"  Chave de Acesso: {chave_acesso}")
+        print(f"  NFS-e Nº:        {n_nfse}")
+        print(f"  DFS-e Nº:        {n_dfse}")
+        print(f"  Ambiente:        {'Produção' if tp_amb == '1' else 'Homologação'}")
+        print(f"  Emitente:        {x_nome_emit}")
+        print(f"  CNPJ:            {cnpj_emit}")
+        print(f"  Valor BC:        R$ {v_bc}")
+        print(f"  ISSQN:           R$ {v_issqn}")
+        print(f"  Valor Líquido:   R$ {v_liq}")
+        print("-"*60)
+
+        # 4. Coletar motivo do cancelamento
+        print("\nMOTIVO DO CANCELAMENTO:")
+        print("  1 - Erro na Emissão")
+        print("  2 - Serviço não Prestado")
+        print("  9 - Outros")
+
+        while True:
+            cod_motivo = input("Código do motivo (1/2/9): ").strip()
+            if cod_motivo in ('1', '2', '9'):
+                break
+            print("[ERRO] Código inválido. Use 1, 2 ou 9.")
+
+        motivos_tipo = {'1': 'Erro na Emissão', '2': 'Serviço não Prestado', '9': 'Outros'}
+        print(f"  → {motivos_tipo[cod_motivo]}")
+
+        while True:
+            x_motivo = input("Descrição do motivo (mínimo 15 caracteres): ").strip()
+            if len(x_motivo) >= 15:
+                break
+            print(f"[ERRO] Muito curto ({len(x_motivo)} caracteres). Mínimo 15.")
+
+        # 5. Gerar XML do evento
+        agora = datetime.now()
+        dh_evento = agora.strftime("%Y-%m-%dT%H:%M:%S-03:00")
+
+        id_pedido = f"PRE{chave_acesso}101101"
+
+        xml_evento = f"""<pedRegEvento xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">
+  <infPedReg Id="{id_pedido}">
+    <tpAmb>{tp_amb}</tpAmb>
+    <verAplic>Spadim_v1.0</verAplic>
+    <dhEvento>{dh_evento}</dhEvento>
+    <CNPJAutor>{cnpj_emit}</CNPJAutor>
+    <chNFSe>{chave_acesso}</chNFSe>
+    <e101101>
+      <xDesc>Cancelamento de NFS-e</xDesc>
+      <cMotivo>{cod_motivo}</cMotivo>
+      <xMotivo>{x_motivo}</xMotivo>
+    </e101101>
+  </infPedReg>
+</pedRegEvento>"""
+
+        # 6. Confirmar
+        print("\n" + "="*60)
+        print("CONFIRMAÇÃO DO CANCELAMENTO")
+        print("="*60)
+        print(f"  NFS-e:       Nº {n_nfse} (DFS-e {n_dfse})")
+        print(f"  Chave:       {chave_acesso}")
+        print(f"  Valor:       R$ {v_liq}")
+        print(f"  Motivo:      {motivos_tipo[cod_motivo]}")
+        print(f"  Descrição:   {x_motivo}")
+        print(f"  Ambiente:    {'Produção' if tp_amb == '1' else 'Homologação'}")
+        print("="*60)
+
+        confirmacao = input("\nConfirma o cancelamento? (S/N): ").strip().upper()
+        if confirmacao != 'S':
+            print("[INFO] Cancelamento abortado pelo usuário.")
+            return False
+
+        # 7. Enviar cancelamento
+        print("\n[INFO] Enviando cancelamento...")
+        sucesso, resposta = self.cliente.cancelar_nfse(chave_acesso, xml_evento, assinar=True)
+
+        if sucesso:
+            print("\n[OK] NFS-e CANCELADA com SUCESSO!")
+
+            if resposta.get("xml"):
+                pasta_saida = self.config.get("nfse", {}).get("caminho_xml_saida", "./nfse_emitidas")
+                os.makedirs(pasta_saida, exist_ok=True)
+                timestamp = agora.strftime("%Y%m%d_%H%M%S")
+                nome_arquivo = os.path.join(pasta_saida, f"cancelamento_{n_nfse}_{timestamp}.xml")
+                self.cliente.salvar_resposta_xml(resposta["xml"], nome_arquivo)
+
+            return True
+        else:
+            print("\n[ERRO] Erro no cancelamento:")
+            erro = resposta.get("erro", resposta)
+            if isinstance(erro, dict):
+                for chave, valor in erro.items():
+                    print(f"  {chave}: {valor}")
+            else:
+                print(f"  {erro}")
+            return False
+
     def emitir_lote(self, pasta_xml: str = None) -> None:
         """
         Emite NFS-e em lote (todos os XMLs de uma pasta)
@@ -329,9 +491,10 @@ def menu_principal():
         print("="*60)
         print("1. Emitir NFS-e (arquivo específico)")
         print("2. Consultar NFS-e")
-        print("3. Cancelar NFS-e")
-        print("4. Emitir em lote (pasta)")
-        print("5. Sair")
+        print("3. Cancelar NFS-e (manual)")
+        print("4. Cancelamento Assistido")
+        print("5. Emitir em lote (pasta)")
+        print("6. Sair")
         print("-"*60)
 
         opcao = input("Escolha uma opção: ").strip()
@@ -353,10 +516,13 @@ def menu_principal():
                 gerenciador.cancelar_nfse(chave, arquivo_evento)
 
         elif opcao == "4":
+            gerenciador.cancelamento_assistido()
+
+        elif opcao == "5":
             pasta = input("Caminho da pasta (Enter para usar config.json): ").strip()
             gerenciador.emitir_lote(pasta if pasta else None)
 
-        elif opcao == "5":
+        elif opcao == "6":
             print("Encerrando...")
             break
 
@@ -380,6 +546,10 @@ if __name__ == "__main__":
         elif comando == "cancelar" and len(sys.argv) > 3:
             gerenciador.cancelar_nfse(sys.argv[2], sys.argv[3])
 
+        elif comando == "cancelar-assistido":
+            arquivo = sys.argv[2] if len(sys.argv) > 2 else None
+            gerenciador.cancelamento_assistido(arquivo)
+
         elif comando == "lote":
             pasta = sys.argv[2] if len(sys.argv) > 2 else None
             gerenciador.emitir_lote(pasta)
@@ -389,6 +559,7 @@ if __name__ == "__main__":
             print("  python main.py emitir <arquivo.xml>")
             print("  python main.py consultar <chave_acesso>")
             print("  python main.py cancelar <chave_acesso> <evento.xml>")
+            print("  python main.py cancelar-assistido [arquivo_nfse.xml]")
             print("  python main.py lote [pasta]")
             print("\nOu execute sem argumentos para menu interativo:")
             print("  python main.py")
