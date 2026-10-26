@@ -1,0 +1,8 @@
+line-length = 100
+# o codigo roda em Python 3.8 (Ubuntu 20.04) ate 3.14 (Ubuntu 26.04)
+target-version = "py38"
+
+[lint]
+select = ["E", "F", "W", "I"]
+# linhas longas sao comuns nas mensagens em portugues; o resto do E/W vale
+ignore = ["E501"]

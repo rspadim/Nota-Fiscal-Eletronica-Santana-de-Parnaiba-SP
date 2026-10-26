@@ -1,0 +1,80 @@
+# Certificados e arquivos sensíveis
+*.pem
+*.pfx
+*.p12
+*.key
+*.crt
+
+# Arquivos de saída
+nfse_emitidas/
+nfse_enviadas/
+nfse_entrada/
+*.xml
+
+# Notas fiscais e documentos do cliente (nunca versionar)
+*.pdf
+!docs/*.pdf
+processados/
+enviados/
+erros/
+
+# Configuração local
+config.json
+config.json.bak
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Teste
+.pytest_cache/
+
+# Documentos privados
+exemplo101.txt
+har\ clicando\ no\ chrome.txt
+
+# Build do executavel / instalador
+build/
+dist/
+*.spec.bak
+
+# Ambientes virtuais
+.venv/
+venv/
+.env
+
+# Cache de ferramentas
+.ruff_cache/
+.mypy_cache/

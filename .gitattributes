@@ -1,0 +1,23 @@
+# Normaliza texto no repositorio, mas preserva scripts com LF (Linux)
+# e arquivos do Windows com CRLF.
+* text=auto
+
+*.sh   text eol=lf
+*.py   text eol=lf
+*.yml  text eol=lf
+*.toml text eol=lf
+*.md   text eol=lf
+
+*.iss  text eol=crlf
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+
+*.png  binary
+*.jpg  binary
+*.pdf  binary
+*.xlsx binary
+*.zip  binary
+*.deb  binary
+*.exe  binary
+*.pem  binary
+*.pfx  binary

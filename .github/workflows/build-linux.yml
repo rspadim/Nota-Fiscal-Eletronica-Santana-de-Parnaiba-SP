@@ -1,0 +1,121 @@
+name: Build Linux
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  deb:
+    name: .deb Ubuntu ${{ matrix.distro }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # anexar os pacotes na release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: "20.04"
+            suite: focal
+          - distro: "22.04"
+            suite: jammy
+          - distro: "24.04"
+            suite: noble
+          - distro: "26.04"
+            suite: resolute
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Definir versao
+        id: versao
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            echo "valor=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "valor=0.0.0-dev.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build do .deb em Ubuntu ${{ matrix.distro }}
+        shell: bash
+        env:
+          VERSAO: ${{ steps.versao.outputs.valor }}
+          DISTRO: ${{ matrix.distro }}
+          SUITE: ${{ matrix.suite }}
+        run: |
+          docker run --rm \
+            -v "$PWD:/app" \
+            -e VERSAO -e DISTRO -e SUITE \
+            "ubuntu:${DISTRO}" \
+            bash -c '
+              set -e
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq
+              apt-get install -y -qq python3 python3-pip python3-venv \
+                gcc libxml2-dev libxslt1-dev zlib1g-dev libffi-dev \
+                libssl-dev binutils dpkg-dev >/dev/null
+              python3 -m venv /venv
+              /venv/bin/pip install -q -r /app/requirements.txt pyinstaller
+              cd /app
+              /venv/bin/pyinstaller nfse.spec --noconfirm
+              sh packaging/linux/build_deb.sh
+            '
+
+      - name: Testar o pacote na distro alvo
+        shell: bash
+        env:
+          DISTRO: ${{ matrix.distro }}
+        run: |
+          docker run --rm \
+            -v "$PWD/dist/linux:/pacotes:ro" \
+            "ubuntu:${DISTRO}" \
+            bash -c '
+              set -e
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq
+              apt-get install -y -qq /pacotes/*.deb >/dev/null
+              test -x /opt/nfse-santana/nfse-santana
+              test -x /usr/bin/nfse-santana
+              # sem config o launcher cria o modelo e orienta o usuario
+              if nfse-santana; then
+                echo "launcher deveria sair != 0 na primeira execucao"; exit 1
+              fi
+              test -f "$HOME/.config/nfse-santana/config.json" || {
+                echo "launcher nao criou o config modelo"; exit 1; }
+              # com o modelo preenchido, o programa inicia (falha so no certificado)
+              echo 10 | nfse-santana 2>&1 | grep -q "Certificado" || {
+                echo "programa nao iniciou com o config"; exit 1; }
+              echo "pacote OK"
+            '
+
+      - name: Guardar .deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-ubuntu-${{ matrix.distro }}
+          path: dist/linux/*.deb
+          if-no-files-found: error
+
+  release:
+    name: Publicar na release
+    needs: deb
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Baixar todos os .deb
+        uses: actions/download-artifact@v4
+        with:
+          pattern: deb-ubuntu-*
+          path: pacotes
+          merge-multiple: true
+
+      - name: Anexar na release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: pacotes/*.deb

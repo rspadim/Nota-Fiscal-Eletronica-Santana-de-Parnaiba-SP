@@ -1,0 +1,42 @@
+NFS-e Santana - configuracao no Linux
+=====================================
+
+1) Crie a pasta de configuracao do usuario:
+
+    mkdir -p ~/.config/nfse-santana
+
+2) Copie o modelo e edite:
+
+    cp /opt/nfse-santana/config.json.exemplo ~/.config/nfse-santana/config.json
+    nano ~/.config/nfse-santana/config.json
+
+Campos obrigatorios:
+  certificado.caminho_cert   caminho do certificado A1 em .pem
+  certificado.caminho_chave  caminho da chave privada (se separada)
+  certificado.senha          senha do certificado
+  empresa.cnpj               CNPJ (so digitos)
+  empresa.inscricao_municipal
+  portal.usuario             CNPJ do portal (so digitos)
+  portal.senha               senha do portal do contribuinte
+
+3) Converta o certificado A1 (.pfx) para .pem:
+
+    openssl pkcs12 -in certificado.pfx -out certificado.pem -nodes
+
+4) Ajuste os caminhos das pastas no config.json, por exemplo:
+
+    "nfse": {
+      "caminho_xml_entrada": "/home/usuario/nfse/entrada",
+      "caminho_xml_enviados": "/home/usuario/nfse/enviadas",
+      "caminho_xml_saida":   "/home/usuario/nfse/emitidas"
+    }
+
+5) Rode:
+
+    nfse-santana
+
+Logs: ./logs/execucao_AAAAMMDD.log ao lado do config (retencao de 30 dias).
+Se a pasta nao for gravavel, usa ~/.local/state/nfse-santana/logs.
+
+Observacao: caminhos relativos no config.json sao resolvidos a partir da
+pasta do proprio config.json (~/.config/nfse-santana).
